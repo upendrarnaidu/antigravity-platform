@@ -21,4 +21,6 @@ EXPOSE 8080
 
 # Start FastAPI server using Gunicorn and Uvicorn workers for concurrency
 # Cloud Run provides a PORT environment variable that we must listen on
-CMD ["sh", "-c", "gunicorn api_server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]
+# Note: Using 1 worker because Cloud Run natively handles horizontal scaling,
+# and multiple workers will exceed the default 512MB memory limit on boot.
+CMD ["sh", "-c", "gunicorn api_server:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]
