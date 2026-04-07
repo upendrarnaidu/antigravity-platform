@@ -29,7 +29,28 @@ def init_firebase():
         return db
 
     try:
-        if os.path.exists(_SERVICE_ACCOUNT_PATH):
+        if os.environ.get("FIREBASE_PRIVATE_KEY") and os.environ.get("FIREBASE_CLIENT_EMAIL"):
+            # Construct dictionary from environment variables (Cloud Run mode)
+            private_key = os.environ.get("FIREBASE_PRIVATE_KEY").replace("\\n", "\n")
+            client_email = os.environ.get("FIREBASE_CLIENT_EMAIL")
+            
+            project_id = os.environ.get("FIREBASE_PROJECT_ID")
+            if not project_id and "@" in client_email and ".iam.gserviceaccount.com" in client_email:
+                project_id = client_email.split("@")[1].split(".")[0]
+                
+            cred_dict = {
+                "type": "service_account",
+                "project_id": project_id,
+                "private_key": private_key,
+                "client_email": client_email,
+                "token_uri": "https://oauth2.googleapis.com/token",
+            }
+            
+            cred = credentials.Certificate(cred_dict)
+            _app = firebase_admin.initialize_app(cred)
+            logger.info(f"🔥 Firebase initialized with Secrets for project: {project_id}")
+
+        elif os.path.exists(_SERVICE_ACCOUNT_PATH):
             cred = credentials.Certificate(_SERVICE_ACCOUNT_PATH)
             _app = firebase_admin.initialize_app(cred)
             logger.info(f"🔥 Firebase initialized with service account: {_SERVICE_ACCOUNT_PATH}")
