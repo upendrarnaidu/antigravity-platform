@@ -48,6 +48,9 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",    # Node API (proxy)
     "https://saas-product-a8757.web.app",
     "https://saas-product-a8757.firebaseapp.com",
+    "https://antigravity-platform.vercel.app",
+    "https://vipunkrut.com",
+    "https://www.vipunkrut.com",
 ]
 
 app.add_middleware(
