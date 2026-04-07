@@ -1,0 +1,20 @@
+﻿{"level":30,"time":1774826591435,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-4","req":{"method":"POST","url":"/api/v1/auth/otp/send","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826591473,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-4","res":{"statusCode":409},"responseTime":38.50679501891136,"msg":"request completed"}
+{"level":30,"time":1774826612931,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-5","req":{"method":"OPTIONS","url":"/api/v1/auth/otp/send","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826612934,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-5","res":{"statusCode":204},"responseTime":1.6974319815635681,"msg":"request completed"}
+{"level":30,"time":1774826612940,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-6","req":{"method":"POST","url":"/api/v1/auth/otp/send","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826612974,"pid":18,"hostname":"438e41d7b5fa","msg":"\n\n================================\n≡ƒöÉ SIMULATED OTP EMAIL FOR: demo1@gmail.com\n≡ƒôì CODE: 984798\n================================\n"}
+{"level":30,"time":1774826612975,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-6","res":{"statusCode":200},"responseTime":34.291124016046524,"msg":"request completed"}
+{"level":30,"time":1774826619025,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-7","req":{"method":"OPTIONS","url":"/api/v1/auth/register","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826619026,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-7","res":{"statusCode":204},"responseTime":0.9443030059337616,"msg":"request completed"}
+{"level":30,"time":1774826619031,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-8","req":{"method":"POST","url":"/api/v1/auth/register","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826619067,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-8","res":{"statusCode":401},"responseTime":36.023053020238876,"msg":"request completed"}
+{"level":30,"time":1774826654594,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-9","req":{"method":"OPTIONS","url":"/api/v1/auth/otp/send","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826654596,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-9","res":{"statusCode":204},"responseTime":1.1791059970855713,"msg":"request completed"}
+{"level":30,"time":1774826654599,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-a","req":{"method":"POST","url":"/api/v1/auth/otp/send","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826654618,"pid":18,"hostname":"438e41d7b5fa","msg":"\n\n================================\n≡ƒöÉ SIMULATED OTP EMAIL FOR: upendra.r.2006@gmail.com\n≡ƒôì CODE: 731932\n================================\n"}
+{"level":30,"time":1774826654619,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-a","res":{"statusCode":200},"responseTime":20.212009996175766,"msg":"request completed"}
+{"level":30,"time":1774826697882,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-b","req":{"method":"OPTIONS","url":"/api/v1/auth/register","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826697885,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-b","res":{"statusCode":204},"responseTime":2.846031993627548,"msg":"request completed"}
+{"level":30,"time":1774826697889,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-c","req":{"method":"POST","url":"/api/v1/auth/register","hostname":"localhost:3000","remoteAddress":"172.18.0.1","remotePort":46068},"msg":"incoming request"}
+{"level":30,"time":1774826697917,"pid":18,"hostname":"438e41d7b5fa","reqId":"req-c","res":{"statusCode":401},"responseTime":28.10187602043152,"msg":"request completed"}

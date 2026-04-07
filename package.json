@@ -1,0 +1,27 @@
+{
+  "name": "ai-marketing-platform",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "concurrently -n \"INFRA,API,WEB,AI\" -c \"magenta,blue,green,yellow\" \"npm run docker:up\" \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:ai\"",
+    "dev:api": "wait-on tcp:5432 tcp:6379 tcp:9092 && npm --prefix node-api run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:ai": "python-engine\\.venv\\Scripts\\python python-engine\\main.py",
+    "docker:up": "docker compose up -d postgres redis kafka zookeeper clickhouse",
+    "docker:down": "docker compose down",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "firebase-tools": "^15.12.0",
+    "wait-on": "^9.0.4"
+  }
+}

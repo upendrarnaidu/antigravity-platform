@@ -1,0 +1,139 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════
+// AI Marketing Platform — Firestore Security Rules (Production)
+// ═══════════════════════════════════════════════════════════════
+// Principle: Deny by default. Backend (Admin SDK) bypasses all rules.
+// These rules ONLY govern client SDK / REST API access.
+//
+// Collection Architecture:
+//   users                 → User profiles + credit wallets
+//   campaigns             → AI-generated campaign content
+//   credit_transactions   → Immutable credit ledger
+//   otp_codes             → OTP verification (server-only)
+//   payments              → Legacy payment records (server-only)
+//   payment_orders        → Razorpay order audit trail
+//   webhook_events        → Webhook idempotency markers
+// ═══════════════════════════════════════════════════════════════
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────────────────
+    // USERS — Profile data + credit wallet
+    // ─────────────────────────────────────────────────────────
+    // Read:   ✅ Own document only
+    // Create: ❌ Server-only (via OTP verify flow)
+    // Update: ✅ Own document, BUT credits/tier/subscription fields BLOCKED
+    // Delete: ❌ Never from client
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow update: if isOwner(userId)
+        && !isChangingProtectedFields();
+
+      allow create, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CAMPAIGNS — AI-generated content per user
+    // ─────────────────────────────────────────────────────────
+    // Read:   ✅ Own campaigns only
+    // Create: ✅ Own campaigns (user_id must match auth)
+    // Delete: ✅ Own campaigns only
+    // Update: ❌ Server-only (pipeline writes state/media URLs)
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated()
+        && resource.data.user_id == request.auth.uid;
+
+      allow create: if isAuthenticated()
+        && request.resource.data.user_id == request.auth.uid;
+
+      allow delete: if isAuthenticated()
+        && resource.data.user_id == request.auth.uid;
+
+      allow update: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CREDIT TRANSACTIONS — Immutable financial ledger
+    // ─────────────────────────────────────────────────────────
+    // Read:   ✅ Own transactions only
+    // Write:  ❌ Absolutely no client writes (server-only via Admin SDK)
+    match /credit_transactions/{txnId} {
+      allow read: if isAuthenticated()
+        && resource.data.user_id == request.auth.uid;
+
+      allow create, update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // OTP CODES — Server-managed verification tokens
+    // ─────────────────────────────────────────────────────────
+    // No client access. Managed entirely by Python Admin SDK.
+    match /otp_codes/{docId} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PAYMENT ORDERS — Razorpay order audit trail
+    // ─────────────────────────────────────────────────────────
+    // Read:   ✅ Own orders only (for status polling)
+    // Write:  ❌ Server-only
+    match /payment_orders/{orderId} {
+      allow read: if isAuthenticated()
+        && resource.data.user_id == request.auth.uid;
+
+      allow create, update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // WEBHOOK EVENTS — Idempotency markers for Razorpay
+    // ─────────────────────────────────────────────────────────
+    // No client access. Written only by webhook handler.
+    match /webhook_events/{eventId} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // PAYMENTS (Legacy) — Old payment records
+    // ─────────────────────────────────────────────────────────
+    match /payments/{docId} {
+      allow read, write: if false;
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // DEFAULT: Deny everything else
+    // ─────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+
+    // ═════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS
+    // ═════════════════════════════════════════════════════════
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isChangingProtectedFields() {
+      // Block clients from modifying financial or privilege fields
+      // These can ONLY be changed by the Admin SDK (server-side)
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny([
+          'credits',
+          'tier',
+          'subscription_status',
+          'subscription_id',
+          'token_balance',
+          'last_charged_at',
+          'created_at'
+        ]);
+    }
+  }
+}
