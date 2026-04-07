@@ -16,8 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the python-engine source code into the app directory
 COPY python-engine/ .
 
-# Expose the API port
-EXPOSE 8000
+# Expose the API port (Cloud Run uses 8080 by default)
+EXPOSE 8080
 
 # Start FastAPI server using Gunicorn and Uvicorn workers for concurrency
-CMD ["gunicorn", "api_server:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# Cloud Run provides a PORT environment variable that we must listen on
+CMD ["sh", "-c", "gunicorn api_server:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8080}"]
