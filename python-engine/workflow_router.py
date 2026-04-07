@@ -113,8 +113,15 @@ async def estimate_cost(req: CostEstimateRequest, user: dict = Depends(get_curre
 @router.get("/credits")
 async def get_credits(user: dict = Depends(get_current_user)):
     """Get the user's current credit balance."""
-    credits = get_user_credits(user["user_id"])
-    return {"credits": credits, "user_id": user["user_id"]}
+    try:
+        credits = get_user_credits(user["user_id"])
+        return {"credits": credits, "user_id": user["user_id"]}
+    except Exception as e:
+        logger.error(f"Failed to fetch credits for user {user.get('user_id')}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "credits_fetch_failed", "message": str(e)}
+        )
 
 
 @router.get("/credits/history")
@@ -369,12 +376,21 @@ async def execute_workflow(
     }
 
     # ── Credit Gate ───────────────────────────────────────────
-    # This will raise HTTPException(402) if insufficient credits
-    cost = check_and_deduct_credits(
-        user["user_id"],
-        preferences,
-        reason=f"pipeline_{campaign_id}"
-    )
+    try:
+        # This will raise HTTPException(402) if insufficient credits
+        cost = check_and_deduct_credits(
+            user["user_id"],
+            preferences,
+            reason=f"pipeline_{campaign_id}"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Credit deduction crash for user {user.get('user_id')}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "credit_system_error", "message": "An unexpected error occurred in the credit system."}
+        )
 
     params = {
         "campaign_name": req.campaign_name,
@@ -388,16 +404,23 @@ async def execute_workflow(
     logger.info(f"🎬 Director Workflow: {campaign_id} | Cost: {cost} credits | "
                 f"Providers: {preferences} | User: {user.get('user_id')}")
 
-    return StreamingResponse(
-        _stream_workflow(campaign_id, params, user, preferences, credit_cost=cost),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Campaign-Id": campaign_id,
-            "X-Credits-Deducted": str(cost),
-        },
-    )
+    try:
+        return StreamingResponse(
+            _stream_workflow(campaign_id, params, user, preferences, credit_cost=cost),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Campaign-Id": campaign_id,
+                "X-Credits-Deducted": str(cost),
+            },
+        )
+    except Exception as e:
+        logger.error(f"StreamingResponse creation failed: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail={"error": "streaming_error", "message": "Failed to initiate progress stream."}
+        )
 
 
 @router.get("/{campaign_id}/status", response_model=WorkflowStatusResponse)

@@ -482,11 +482,19 @@ export default function CampaignFlow() {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (res.ok) {
-          const data = await res.json();
-          setUserCredits(data.credits);
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const data = await res.json();
+            setUserCredits(data.credits);
+          } else {
+            const text = await res.text();
+            console.warn('Credits endpoint returned non-JSON:', text.slice(0, 100));
+          }
+        } else {
+          console.warn(`Credits fetch failed: ${res.status}`);
         }
       } catch (err) {
-        console.error('Failed to fetch credits:', err);
+        console.error('Failed to fetch credits (Network or JSON error):', err);
       }
     };
     if (token && PYTHON_API) fetchCredits();
@@ -530,9 +538,17 @@ export default function CampaignFlow() {
 
       // ── Credit Gate: handle 402 ────────────────────────
       if (response.status === 402) {
-        const err = await response.json();
-        const detail = err.detail || err;
-        setPaywallDeficit(detail.deficit || estimatedCost);
+        const contentType = response.headers.get("content-type");
+        let detail = "Insufficient credits for this operation.";
+        if (contentType && contentType.includes("application/json")) {
+          const err = await response.json();
+          detail = err.detail || err;
+        } else {
+          const text = await response.text();
+          console.warn('402 response was not JSON:', text.slice(0, 200));
+        }
+        
+        setPaywallDeficit(detail?.deficit || estimatedCost);
         setShowPaywall(true);
         setPipelineStatus('idle');
         setShowLaunch(true);
@@ -612,6 +628,14 @@ export default function CampaignFlow() {
           headers: { 'Authorization': `Bearer ${token}` },
         });
         if (!res.ok) return;
+        
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await res.text();
+          console.warn('Status endpoint returned non-JSON:', text.slice(0, 100));
+          return;
+        }
+
         const data = await res.json();
         if (data.voiceover_url || data.thumbnail_url || data.video_url) {
           updateNodeData('Result', {

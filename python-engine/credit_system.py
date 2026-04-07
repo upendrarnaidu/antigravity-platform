@@ -87,72 +87,66 @@ def calculate_pipeline_cost(preferences: dict = None) -> int:
 
 
 def get_user_credits(user_id: str) -> int:
-    """Get the current credit balance for a user from Firestore."""
+    """Fetch current credit balance for a user from Firestore."""
     try:
         doc = db.collection("users").document(user_id).get()
-        if doc.exists:
-            return doc.to_dict().get("credits", 0)
-        return 0
+        if not doc.exists:
+            logger.info(f"User {user_id} not found in Firestore. Defaulting to 10 credits.")
+            return 10  # Initial free credits
+        
+        data = doc.to_dict()
+        credits = data.get("credits", 0)
+        logger.info(f"User {user_id} credit balance: {credits}")
+        return credits
     except Exception as e:
-        logger.error(f"Failed to read credits for {user_id}: {e}")
-        return 0
+        logger.error(f"Error fetching credits for user {user_id}: {e}")
+        raise  # Re-raise to be caught by the router's try-except block
 
 
-def deduct_credits(user_id: str, amount: int, reason: str = "") -> bool:
-    """
-    Atomically deduct credits from a user's wallet using a Firestore
-    transaction. This guarantees that two concurrent requests cannot
-    both read the same balance and both succeed.
-
-    Returns True if deduction succeeded, False if insufficient credits.
-    """
+def deduct_credits(user_id: str, amount: int, reason: str = "generic") -> bool:
+    """Deduct credits from user wallet within a transaction."""
+    logger.info(f"Attempting to deduct {amount} credits from {user_id} (Reason: {reason})")
     user_ref = db.collection("users").document(user_id)
-
+    
     @firestore.transactional
-    def _deduct_in_transaction(txn, ref, cost):
-        snapshot = ref.get(transaction=txn)
+    def _do_deduction(transaction, user_ref, amount):
+        snapshot = user_ref.get(transaction=transaction)
         if not snapshot.exists:
-            raise ValueError(f"User {user_id} not found")
-
-        current = snapshot.to_dict().get("credits", 0)
-        if current < cost:
-            raise ValueError(
-                f"Insufficient credits: has {current}, needs {cost}"
-            )
-
-        new_balance = current - cost
-        txn.update(ref, {
-            "credits": new_balance,
-            "updated_at": datetime.now(timezone.utc),
+            logger.error(f"User {user_id} not found during credit deduction.")
+            return False
+            
+        current = snapshot.get("credits")
+        if current < amount:
+            logger.warning(f"User {user_id} has insufficient credits: {current} < {amount}")
+            return False
+            
+        transaction.update(user_ref, {
+            "credits": current - amount,
+            "updated_at": firestore.SERVER_TIMESTAMP
         })
-        return current, new_balance
-
-    try:
-        txn = db.transaction()
-        current_credits, new_balance = _deduct_in_transaction(txn, user_ref, amount)
-
-        # Log the transaction outside the Firestore txn (append-only, safe)
-        db.collection("credit_transactions").add({
+        
+        # Log the transaction
+        txn_id = f"txn_{int(datetime.now().timestamp())}_{user_id[:5]}"
+        txn_ref = db.collection("credit_transactions").document(txn_id)
+        transaction.set(txn_ref, {
+            "id": txn_id,
             "user_id": user_id,
-            "type": "debit",
             "amount": -amount,
-            "balance_before": current_credits,
-            "balance_after": new_balance,
-            "reason": reason or "pipeline_execution",
-            "created_at": datetime.now(timezone.utc),
+            "type": "usage",
+            "reason": reason,
+            "created_at": firestore.SERVER_TIMESTAMP
         })
-
-        logger.info(
-            f"💳 Deducted {amount} credits from {user_id} "
-            f"({current_credits} → {new_balance})"
-        )
+        
         return True
 
-    except ValueError as ve:
-        logger.warning(f"⚠️ {ve}")
-        return False
+    try:
+        transaction = db.transaction()
+        result = _do_deduction(transaction, user_ref, amount)
+        if result:
+            logger.info(f"Successfully deducted {amount} credits from {user_id}")
+        return result
     except Exception as e:
-        logger.error(f"❌ Credit deduction failed for {user_id}: {e}")
+        logger.error(f"Credit deduction transaction failed for {user_id}: {e}")
         return False
 
 
