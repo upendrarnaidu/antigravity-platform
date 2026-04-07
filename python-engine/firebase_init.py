@@ -29,7 +29,14 @@ def init_firebase():
         return db
 
     try:
-        if os.environ.get("FIREBASE_PRIVATE_KEY") and os.environ.get("FIREBASE_CLIENT_EMAIL"):
+        if os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"):
+            import json
+            cert_dict = json.loads(os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON"))
+            cred = credentials.Certificate(cert_dict)
+            _app = firebase_admin.initialize_app(cred)
+            logger.info("🔥 Firebase initialized with full JSON secret")
+            
+        elif os.environ.get("FIREBASE_PRIVATE_KEY") and os.environ.get("FIREBASE_CLIENT_EMAIL"):
             # Construct dictionary from environment variables (Cloud Run mode)
             raw_key = os.environ.get("FIREBASE_PRIVATE_KEY")
             # If Google Cloud Run escaped the newlines, unescape them
