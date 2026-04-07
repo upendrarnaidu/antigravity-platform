@@ -28,6 +28,13 @@ from google.cloud.firestore_v1 import FieldFilter
 
 logger = logging.getLogger(__name__)
 
+def _ensure_db():
+    if db is None:
+        raise HTTPException(
+            status_code=500, 
+            detail="⚠️ Critical Backend Error: The Firebase Database failed to connect. Your FIREBASE_SERVICE_ACCOUNT_JSON variable in Google Cloud Run is either missing or contains invalid JSON formatting."
+        )
+
 # ── Configuration ────────────────────────────────────────────
 JWT_SECRET = os.environ.get("JWT_SECRET", "super_secret_fallback_key")
 JWT_ALGORITHM = "HS256"
@@ -171,6 +178,7 @@ def _check_rate_limit(email: str) -> bool:
 @router.post("/send-otp")
 async def send_otp(req: SendOtpRequest):
     """Send a 6-digit OTP to the user's email via Zoho SMTP."""
+    _ensure_db()
     email = req.email.lower().strip()
 
     # Basic email validation
@@ -208,6 +216,7 @@ async def send_otp(req: SendOtpRequest):
 @router.post("/verify-otp", response_model=AuthResponse)
 async def verify_otp(req: VerifyOtpRequest):
     """Verify OTP and return a JWT session token."""
+    _ensure_db()
     email = req.email.lower().strip()
     code = req.code.strip()
 
@@ -310,6 +319,7 @@ async def verify_otp(req: VerifyOtpRequest):
 @router.get("/me")
 async def get_profile(user: dict = Depends(get_current_user)):
     """Get the current user's profile from Firestore."""
+    _ensure_db()
     user_doc = db.collection("users").document(user["user_id"]).get()
     if not user_doc.exists:
         raise HTTPException(status_code=404, detail="User not found")
