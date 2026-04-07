@@ -31,7 +31,19 @@ def init_firebase():
     try:
         if os.environ.get("FIREBASE_PRIVATE_KEY") and os.environ.get("FIREBASE_CLIENT_EMAIL"):
             # Construct dictionary from environment variables (Cloud Run mode)
-            private_key = os.environ.get("FIREBASE_PRIVATE_KEY").replace("\\n", "\n")
+            raw_key = os.environ.get("FIREBASE_PRIVATE_KEY")
+            # If Google Cloud Run escaped the newlines, unescape them
+            private_key = raw_key.replace("\\n", "\n")
+            
+            # If Google Cloud Run replaced newlines with spaces (very common in secret managers)
+            if "-----BEGIN PRIVATE KEY----- " in private_key:
+                private_key = private_key.replace("-----BEGIN PRIVATE KEY----- ", "-----BEGIN PRIVATE KEY-----\n")
+                private_key = private_key.replace(" -----END PRIVATE KEY-----", "\n-----END PRIVATE KEY-----")
+                # Any remaining spaces inside the middle block need to be newlines
+                middle = private_key.split("-----BEGIN PRIVATE KEY-----\n")[1].split("\n-----END PRIVATE KEY-----")[0]
+                middle_fixed = middle.replace(" ", "\n")
+                private_key = f"-----BEGIN PRIVATE KEY-----\n{middle_fixed}\n-----END PRIVATE KEY-----\n"
+
             client_email = os.environ.get("FIREBASE_CLIENT_EMAIL")
             
             project_id = os.environ.get("FIREBASE_PROJECT_ID")
@@ -64,7 +76,9 @@ def init_firebase():
 
     except Exception as e:
         logger.error(f"❌ Failed to initialize Firebase: {e}")
-        raise
+        # We do not re-raise the exception here. 
+        # Crashing here prevents the Cloud Run container from starting and binding to its PORT.
+        # It's better to let the server start and fail gracefully on specific API calls.
 
 # Auto-initialize on import
 init_firebase()
