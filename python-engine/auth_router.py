@@ -17,7 +17,7 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -56,11 +56,28 @@ class VerifyOtpRequest(BaseModel):
     email: EmailStr
     code: str
 
+class OnboardingRequest(BaseModel):
+    first_name: str
+    last_name: str
+    phone: Optional[str] = None
+    company_name: str
+    job_title: str
+    company_website: Optional[str] = None
+    company_size: str   # '1-10','11-50','51-200','201-1000','1001-5000','5000+'
+    industry: str
+    use_cases: List[str]
+    marketing_budget: Optional[str] = None
+    current_tools: Optional[List[str]] = []
+    referral_source: Optional[str] = None
+    marketing_team_size: Optional[str] = None
+    accepted_terms: bool  # Must be True
+
 class AuthResponse(BaseModel):
     token: str
     user_id: str
     email: str
     tier: str
+    is_new_user: bool
     message: str
 
 # ── Security ─────────────────────────────────────────────────
@@ -275,8 +292,10 @@ async def verify_otp(req: VerifyOtpRequest):
         user_data = doc.to_dict()
         break
 
+    is_new_user = False
     if user_ref is None:
         # New user — create profile with free tier credits
+        is_new_user = True
         user_id = str(uuid.uuid4())
         user_data = {
             "email": email,
@@ -284,6 +303,8 @@ async def verify_otp(req: VerifyOtpRequest):
             "subscription_status": "none",
             "token_balance": 100000,
             "credits": 20,  # Free tier: enough for 1 full Google pipeline run
+            "profile_completed": False,
+            "accepted_terms": False,
             "created_at": datetime.now(timezone.utc),
             "updated_at": datetime.now(timezone.utc),
         }
@@ -292,6 +313,7 @@ async def verify_otp(req: VerifyOtpRequest):
         logger.info(f"🆕 Created new user: {email} ({user_id})")
     else:
         user_data["id"] = user_ref.id
+        is_new_user = not user_data.get("profile_completed", False)
         user_ref.update({"updated_at": datetime.now(timezone.utc)})
         logger.info(f"🔑 Existing user logged in: {email}")
 
@@ -312,8 +334,59 @@ async def verify_otp(req: VerifyOtpRequest):
         user_id=user_data["id"],
         email=email,
         tier=user_data.get("tier", "free"),
+        is_new_user=is_new_user,
         message="Authentication successful"
     )
+
+
+@router.post("/onboarding")
+async def complete_onboarding(
+    req: OnboardingRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Save onboarding profile data for a newly registered user."""
+    _ensure_db()
+
+    if not req.accepted_terms:
+        raise HTTPException(
+            status_code=400,
+            detail="You must accept the Terms of Service and Privacy Policy."
+        )
+
+    user_ref = db.collection("users").document(user["user_id"])
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    profile_data = {
+        # Personal
+        "first_name": req.first_name.strip(),
+        "last_name": req.last_name.strip(),
+        "phone": req.phone.strip() if req.phone else None,
+        # Company
+        "company_name": req.company_name.strip(),
+        "job_title": req.job_title.strip(),
+        "company_website": req.company_website.strip() if req.company_website else None,
+        "company_size": req.company_size,
+        "industry": req.industry,
+        # Marketing
+        "use_cases": req.use_cases,
+        "marketing_budget": req.marketing_budget,
+        "current_tools": req.current_tools or [],
+        "referral_source": req.referral_source,
+        "marketing_team_size": req.marketing_team_size,
+        # Meta
+        "accepted_terms": True,
+        "terms_accepted_at": datetime.now(timezone.utc),
+        "profile_completed": True,
+        "onboarded_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+    }
+
+    user_ref.update(profile_data)
+    logger.info(f"✅ Onboarding completed for user {user['user_id']}")
+
+    return {"message": "Profile saved successfully", "profile_completed": True}
 
 
 @router.get("/me")
@@ -332,4 +405,20 @@ async def get_profile(user: dict = Depends(get_current_user)):
         "subscription_status": data.get("subscription_status", "none"),
         "token_balance": data.get("token_balance", 0),
         "credits": data.get("credits", 0),
+        # Profile
+        "first_name": data.get("first_name"),
+        "last_name": data.get("last_name"),
+        "phone": data.get("phone"),
+        "company_name": data.get("company_name"),
+        "job_title": data.get("job_title"),
+        "company_website": data.get("company_website"),
+        "company_size": data.get("company_size"),
+        "industry": data.get("industry"),
+        "use_cases": data.get("use_cases", []),
+        "marketing_budget": data.get("marketing_budget"),
+        "current_tools": data.get("current_tools", []),
+        "referral_source": data.get("referral_source"),
+        "marketing_team_size": data.get("marketing_team_size"),
+        "profile_completed": data.get("profile_completed", False),
+        "accepted_terms": data.get("accepted_terms", False),
     }

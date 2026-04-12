@@ -87,6 +87,11 @@ export default function AuthModal({ onClose, onSuccess }) {
 
       // Success
       login(data.token, data.user_id, data.email);
+      if (data.is_new_user) {
+        // New user needs onboarding — redirect
+        window.location.href = '/onboarding';
+        return;
+      }
       onSuccess?.();
       onClose();
     } catch (err) {

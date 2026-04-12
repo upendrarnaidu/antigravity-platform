@@ -57,6 +57,9 @@ export const AuthProvider = ({ children }) => {
 
   const refreshProfile = () => fetchUserProfile(token);
 
+  const isAuthenticated = !!token && !!user;
+  const needsOnboarding = isAuthenticated && user?.profile_completed === false;
+
   return (
     <AuthContext.Provider value={{
       token,
@@ -66,7 +69,8 @@ export const AuthProvider = ({ children }) => {
       login,
       logout,
       refreshProfile,
-      isAuthenticated: !!token && !!user,
+      isAuthenticated,
+      needsOnboarding,
       isPro: user?.tier === 'pro' || user?.tier === 'enterprise',
       PYTHON_API,
       NODE_API,

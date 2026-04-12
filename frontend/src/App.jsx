@@ -16,6 +16,7 @@ import VideoCreator from './components/VideoCreator';
 import Chat from './components/Chat';
 import Pricing from './components/Pricing';
 import Integrations from './components/Integrations';
+import Onboarding from './components/Onboarding';
 import { Loader2 } from 'lucide-react';
 
 import TermsOfService from './pages/TermsOfService';
@@ -43,9 +44,11 @@ const LoadingScreen = () => (
 );
 
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, needsOnboarding, loading } = useAuth();
   if (loading) return <LoadingScreen />;
-  return isAuthenticated ? <Layout>{children}</Layout> : <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (needsOnboarding) return <Navigate to="/onboarding" replace />;
+  return <Layout>{children}</Layout>;
 };
 
 function AppRoutes() {
@@ -55,6 +58,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/onboarding" element={<Onboarding />} />
       <Route path="/terms" element={<PublicLayout><TermsOfService /></PublicLayout>} />
       <Route path="/privacy" element={<PublicLayout><PrivacyPolicy /></PublicLayout>} />
       <Route path="/refund" element={<PublicLayout><RefundPolicy /></PublicLayout>} />

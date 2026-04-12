@@ -96,7 +96,8 @@ export default function Login() {
       if (!res.ok) throw new Error(data.detail || data.error || 'Verification failed');
       
       login(data.token, data.user_id, data.email);
-      navigate('/');
+      // New users go to onboarding; returning users go to dashboard
+      navigate(data.is_new_user ? '/onboarding' : '/', { replace: true });
     } catch (err) {
       setError(err.message);
       setOtpDigits(['', '', '', '', '', '']);
