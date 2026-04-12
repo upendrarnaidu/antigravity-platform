@@ -39,9 +39,8 @@ def _ensure_db():
 JWT_SECRET = os.environ.get("JWT_SECRET", "super_secret_fallback_key")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_DAYS = 7
-
-ZOHO_EMAIL = os.environ.get("ZOHO_EMAIL", "hello@vipunkrut.com")
-ZOHO_PASSWORD = os.environ.get("ZOHO_PASSWORD", "")
+ZOHO_EMAIL = os.environ.get("ZOHO_EMAIL") or os.environ.get("ZOHO_SMTP_USER") or "hello@vipunkrut.com"
+ZOHO_PASSWORD = os.environ.get("ZOHO_PASSWORD") or os.environ.get("ZOHO_SMTP_PASS") or ""
 ZOHO_SMTP_HOST = "smtp.zoho.com"
 ZOHO_SMTP_PORT = 587
 
