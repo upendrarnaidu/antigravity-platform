@@ -1,0 +1,10 @@
+.gcloudignore
+.git
+.gitignore
+.venv
+__pycache__
+.env
+*.pyc
+*.pyo
+.pytest_cache
+otp_logs.txt

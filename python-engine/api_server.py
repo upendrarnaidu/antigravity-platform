@@ -48,6 +48,8 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000",    # Node API (proxy)
     "https://saas-product-a8757.web.app",
     "https://saas-product-a8757.firebaseapp.com",
+    "https://ai-saas-platform-1ddea.web.app",
+    "https://ai-saas-platform-1ddea.firebaseapp.com",
     "https://antigravity-platform.vercel.app",
     "https://vipankrut.com",
     "https://www.vipankrut.com",
